@@ -1,0 +1,433 @@
+{
+  "entities": {
+    "TeacherProfile": {
+      "title": "TeacherProfile",
+      "description": "Perfil del docente y configuración institucional de su espacio de trabajo.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "documentId": { "type": "string", "maxLength": 50 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "specialty": { "type": "string", "maxLength": 150 },
+        "institutionName": { "type": "string", "maxLength": 200 },
+        "institutionDane": { "type": "string", "maxLength": 50 },
+        "institutionNit": { "type": "string", "maxLength": 50 },
+        "institutionCity": { "type": "string", "maxLength": 100 },
+        "institutionLogoUrl": { "type": "string", "maxLength": 100000 },
+        "gradingScaleMin": { "type": "number" },
+        "gradingScaleMax": { "type": "number" },
+        "passingScore": { "type": "number" },
+        "basicMin": { "type": "number" },
+        "highMin": { "type": "number" },
+        "superiorMin": { "type": "number" },
+        "customScaleName": { "type": "string", "maxLength": 100 },
+        "activeYearId": { "type": "string", "maxLength": 128 },
+        "activePeriodId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "fullName", "email", "institutionName", "gradingScaleMin", "gradingScaleMax", "passingScore", "createdAt", "updatedAt"]
+    },
+    "AcademicYear": {
+      "title": "AcademicYear",
+      "description": "Año lectivo escolar (ej. 2026).",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "startDate": { "type": "string", "maxLength": 30 },
+        "endDate": { "type": "string", "maxLength": 30 },
+        "isActive": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "closed", "draft"], "maxLength": 20 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "name", "startDate", "endDate", "isActive", "status", "createdAt", "updatedAt"]
+    },
+    "AcademicPeriod": {
+      "title": "AcademicPeriod",
+      "description": "Periodo académico dentro de un año lectivo con peso porcentual.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "number": { "type": "number" },
+        "weightPercentage": { "type": "number" },
+        "startDate": { "type": "string", "maxLength": 30 },
+        "endDate": { "type": "string", "maxLength": 30 },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "name", "number", "weightPercentage", "startDate", "endDate", "isActive", "createdAt", "updatedAt"]
+    },
+    "AreaSubject": {
+      "title": "AreaSubject",
+      "description": "Área fundamental o asignatura dictada por el docente.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "areaName": { "type": "string", "maxLength": 150 },
+        "code": { "type": "string", "maxLength": 30 },
+        "weeklyHours": { "type": "number" },
+        "educationLevel": { "type": "string", "enum": ["Preescolar", "Primaria", "Secundaria", "Media", "CLEI / Adultos", "Todos"], "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "name", "areaName", "weeklyHours", "educationLevel", "createdAt", "updatedAt"]
+    },
+    "GradeGroup": {
+      "title": "GradeGroup",
+      "description": "Grado y grupo escolar (ej. 6° A, Transición 01, CLEI IV).",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "gradeName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "groupName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "educationLevel": { "type": "string", "enum": ["Preescolar", "Primaria", "Secundaria", "Media", "CLEI / Adultos"], "maxLength": 50 },
+        "shift": { "type": "string", "enum": ["Mañana", "Tarde", "Única", "Nocturna", "Sabatina / Dominical"], "maxLength": 50 },
+        "isDirector": { "type": "boolean" },
+        "room": { "type": "string", "maxLength": 80 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "gradeName", "groupName", "educationLevel", "shift", "isDirector", "createdAt", "updatedAt"]
+    },
+    "CourseAssignment": {
+      "title": "CourseAssignment",
+      "description": "Curso o carga académica que une Año Lectivo + Grado/Grupo + Área/Asignatura.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "gradeGroupId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "areaSubjectId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "scheduleSummary": { "type": "string", "maxLength": 200 },
+        "archived": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "gradeGroupId", "areaSubjectId", "displayName", "createdAt", "updatedAt"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Ficha integral de estudiante con datos personales, acudiente y campos personalizados.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "gradeGroupId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "firstName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "lastName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "documentType": { "type": "string", "enum": ["RC", "TI", "CC", "CE", "PPT", "NES", "Otro"], "maxLength": 20 },
+        "documentNumber": { "type": "string", "maxLength": 50 },
+        "code": { "type": "string", "maxLength": 50 },
+        "birthDate": { "type": "string", "maxLength": 30 },
+        "gender": { "type": "string", "maxLength": 30 },
+        "guardianName": { "type": "string", "maxLength": 150 },
+        "guardianRelationship": { "type": "string", "maxLength": 80 },
+        "guardianPhone": { "type": "string", "maxLength": 50 },
+        "guardianEmail": { "type": "string", "maxLength": 150 },
+        "eps": { "type": "string", "maxLength": 100 },
+        "bloodType": { "type": "string", "maxLength": 20 },
+        "piarOrAlert": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["Activo", "Retirado", "Trasladado", "Desertor"], "maxLength": 30 },
+        "customValues": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "gradeGroupId", "firstName", "lastName", "documentType", "status", "createdAt", "updatedAt"]
+    },
+    "StudentCustomField": {
+      "title": "StudentCustomField",
+      "description": "Definición de campo personalizado para los estudiantes.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "fieldKey": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "fieldType": { "type": "string", "enum": ["text", "number", "date", "boolean", "select"], "maxLength": 30 },
+        "options": { "type": "array" },
+        "required": { "type": "boolean" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "fieldKey", "label", "fieldType", "required", "createdAt", "updatedAt"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Registro de asistencia diaria por estudiante, curso y fecha.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "periodId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "courseId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "gradeGroupId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "studentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "status": { "type": "string", "enum": ["Presente", "Ausente", "Tardanza", "Excusa", "Evasión"], "maxLength": 30 },
+        "note": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "periodId", "courseId", "gradeGroupId", "studentId", "date", "status", "createdAt", "updatedAt"]
+    },
+    "EvaluationCategory": {
+      "title": "EvaluationCategory",
+      "description": "Categoría o componente de evaluación (Saber, Hacer, Ser, Autoevaluación, etc.) con su peso porcentual.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "periodId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "courseId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "weightPercentage": { "type": "number" },
+        "description": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "periodId", "courseId", "name", "weightPercentage", "createdAt", "updatedAt"]
+    },
+    "EvaluationActivity": {
+      "title": "EvaluationActivity",
+      "description": "Actividad evaluativa (taller, quiz, exposición, examen, tarea) dentro de una categoría.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "periodId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "courseId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "categoryId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 500 },
+        "dueDate": { "type": "string", "maxLength": 30 },
+        "weightInCategory": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "periodId", "courseId", "categoryId", "title", "weightInCategory", "createdAt", "updatedAt"]
+    },
+    "GradeEntry": {
+      "title": "GradeEntry",
+      "description": "Calificación individual y desempeño nacional (Bajo, Básico, Alto, Superior) de un estudiante en una actividad.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "periodId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "courseId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "categoryId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "activityId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "studentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "score": { "type": "number" },
+        "nationalScaleLevel": { "type": "string", "enum": ["Bajo", "Básico", "Alto", "Superior"], "maxLength": 30 },
+        "feedback": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "periodId", "courseId", "categoryId", "activityId", "studentId", "score", "nationalScaleLevel", "createdAt", "updatedAt"]
+    },
+    "ObservationRecord": {
+      "title": "ObservationRecord",
+      "description": "Anotación en el observador del estudiante sobre actitud, comportamiento, convivencia o mérito.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "periodId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "gradeGroupId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "courseId": { "type": "string", "maxLength": 128 },
+        "studentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 30 },
+        "type": { "type": "string", "enum": ["Reconocimiento Positivo", "Llamado de Atención", "Situación Tipo I", "Situación Tipo II", "Situación Tipo III", "Seguimiento Académico", "Citación a Acudiente"], "maxLength": 60 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "studentDischarge": { "type": "string", "maxLength": 1000 },
+        "commitments": { "type": "string", "maxLength": 1000 },
+        "guardianNotified": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["Abierto", "En seguimiento", "Cerrado"], "maxLength": 30 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "periodId", "gradeGroupId", "studentId", "date", "type", "description", "guardianNotified", "status", "createdAt", "updatedAt"]
+    },
+    "EventCollection": {
+      "title": "EventCollection",
+      "description": "Evento, eventualidad, salida pedagógica, permiso o recaudo de dinero en un grupo.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "gradeGroupId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "courseId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 600 },
+        "eventType": { "type": "string", "enum": ["Recaudo de Dinero", "Permiso / Autorización", "Entrega de Materiales", "Evento / Salida", "Otro"], "maxLength": 50 },
+        "targetAmountCOP": { "type": "number" },
+        "dueDate": { "type": "string", "maxLength": 30 },
+        "status": { "type": "string", "enum": ["Activo", "Cerrado"], "maxLength": 30 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "gradeGroupId", "title", "eventType", "targetAmountCOP", "status", "createdAt", "updatedAt"]
+    },
+    "EventPaymentItem": {
+      "title": "EventPaymentItem",
+      "description": "Registro de pago, abono o cumplimiento de un estudiante frente a una eventualidad o recaudo.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "eventCollectionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "gradeGroupId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "courseId": { "type": "string", "maxLength": 128 },
+        "studentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "amountPaidCOP": { "type": "number" },
+        "paymentStatus": { "type": "string", "enum": ["Pendiente", "Abono", "Pagado / Cumplido", "Exento"], "maxLength": 40 },
+        "paymentDate": { "type": "string", "maxLength": 30 },
+        "note": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "eventCollectionId", "gradeGroupId", "studentId", "amountPaidCOP", "paymentStatus", "createdAt", "updatedAt"]
+    },
+    "SupportPlan": {
+      "title": "SupportPlan",
+      "description": "Plan de apoyo, nivelación o superación académica para estudiantes con desempeño Bajo.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "periodId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "courseId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "studentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "weaknesses": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "assignedActivities": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "dueDate": { "type": "string", "maxLength": 30 },
+        "recoveryScore": { "type": "number" },
+        "status": { "type": "string", "enum": ["Asignado", "En revisión", "Superado", "No superado"], "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "periodId", "courseId", "studentId", "weaknesses", "assignedActivities", "status", "createdAt", "updatedAt"]
+    },
+    "CalendarEvent": {
+      "title": "CalendarEvent",
+      "description": "Evento del calendario académico del docente (entrega de notas, reunión de padres, izada de bandera, etc.).",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 600 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 30 },
+        "time": { "type": "string", "maxLength": 20 },
+        "category": { "type": "string", "enum": ["Evaluación", "Reunión de Padres", "Consejo Académico", "Actividad Institucional", "Entrega de Planillas", "Otro"], "maxLength": 50 },
+        "courseId": { "type": "string", "maxLength": 128 },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "title", "date", "category", "completed", "createdAt", "updatedAt"]
+    },
+    "GuardianMessage": {
+      "title": "GuardianMessage",
+      "description": "Registro de citaciones o comunicados enviados a padres de familia y acudientes.",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "academicYearId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "gradeGroupId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "body": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "channel": { "type": "string", "enum": ["WhatsApp", "Correo Electrónico", "Nota Impresa", "Citación Presencial"], "maxLength": 50 },
+        "sentDate": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teacherId", "academicYearId", "gradeGroupId", "subject", "body", "channel", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/teachers/{teacherId}": {
+      "schema": { "$ref": "#/entities/TeacherProfile" },
+      "description": "Perfiles y configuración institucional de cada docente."
+    },
+    "/academic_years/{yearId}": {
+      "schema": { "$ref": "#/entities/AcademicYear" },
+      "description": "Años lectivos creados por cada docente."
+    },
+    "/academic_periods/{periodId}": {
+      "schema": { "$ref": "#/entities/AcademicPeriod" },
+      "description": "Periodos académicos y sus ponderaciones."
+    },
+    "/areas_subjects/{subjectId}": {
+      "schema": { "$ref": "#/entities/AreaSubject" },
+      "description": "Áreas y asignaturas configuradas por cada docente."
+    },
+    "/grade_groups/{groupId}": {
+      "schema": { "$ref": "#/entities/GradeGroup" },
+      "description": "Grados y grupos escolares."
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/CourseAssignment" },
+      "description": "Asignación de cursos (Grado/Grupo + Asignatura + Año)."
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Directorio y fichas de estudiantes."
+    },
+    "/student_custom_fields/{fieldId}": {
+      "schema": { "$ref": "#/entities/StudentCustomField" },
+      "description": "Campos personalizados para fichas estudiantiles."
+    },
+    "/attendance/{attendanceId}": {
+      "schema": { "$ref": "#/entities/AttendanceRecord" },
+      "description": "Registros de asistencia diaria."
+    },
+    "/evaluation_categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/EvaluationCategory" },
+      "description": "Categorías y pesos del libro de calificaciones."
+    },
+    "/evaluation_activities/{activityId}": {
+      "schema": { "$ref": "#/entities/EvaluationActivity" },
+      "description": "Actividades evaluativas dentro de cada categoría."
+    },
+    "/grade_entries/{entryId}": {
+      "schema": { "$ref": "#/entities/GradeEntry" },
+      "description": "Notas y niveles de desempeño SIEE."
+    },
+    "/observations/{observationId}": {
+      "schema": { "$ref": "#/entities/ObservationRecord" },
+      "description": "Observador del estudiante (actitud y convivencia)."
+    },
+    "/event_collections/{collectionId}": {
+      "schema": { "$ref": "#/entities/EventCollection" },
+      "description": "Recaudos de dinero, permisos y eventualidades."
+    },
+    "/event_payment_items/{itemId}": {
+      "schema": { "$ref": "#/entities/EventPaymentItem" },
+      "description": "Pagos o estados individuales por estudiante en recaudos."
+    },
+    "/support_plans/{planId}": {
+      "schema": { "$ref": "#/entities/SupportPlan" },
+      "description": "Planes de apoyo y nivelación."
+    },
+    "/calendar_events/{eventId}": {
+      "schema": { "$ref": "#/entities/CalendarEvent" },
+      "description": "Agenda y calendario del docente."
+    },
+    "/guardian_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/GuardianMessage" },
+      "description": "Comunicados y citaciones a padres de familia."
+    }
+  }
+}

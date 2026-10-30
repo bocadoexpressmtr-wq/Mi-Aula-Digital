@@ -1,0 +1,6 @@
+{
+  "name": "Mi Aula Digital",
+  "description": "Plataforma integral de gestión académica para docentes de Colombia: asistencia, calificaciones SIEE, observador estudiantil, recaudos y reportes.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

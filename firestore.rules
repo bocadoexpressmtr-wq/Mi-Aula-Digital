@@ -1,0 +1,504 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Deny all by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isTeacherOwner(teacherId) {
+      return isSignedIn() && request.auth.uid == teacherId;
+    }
+
+    function hasValidTimestampsOnCreate(data) {
+      return data.createdAt == request.time && data.updatedAt == request.time;
+    }
+
+    function hasValidTimestampsOnUpdate(data, oldData) {
+      return data.createdAt == oldData.createdAt && data.updatedAt == request.time;
+    }
+
+    // 1. TeacherProfile validation
+    function isValidTeacherProfile(data) {
+      return data.keys().hasAll(['teacherId', 'fullName', 'email', 'institutionName', 'gradingScaleMin', 'gradingScaleMax', 'passingScore', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'fullName', 'email', 'documentId', 'phone', 'specialty', 'institutionName', 'institutionsList', 'institutionDane', 'institutionNit', 'institutionCity', 'institutionLogoUrl', 'gradingScaleMin', 'gradingScaleMax', 'passingScore', 'basicMin', 'highMin', 'superiorMin', 'customScaleName', 'activeYearId', 'activePeriodId', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 150
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && (!('documentId' in data) || (data.documentId is string && data.documentId.size() <= 50))
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 50))
+        && (!('specialty' in data) || (data.specialty is string && data.specialty.size() <= 150))
+        && data.institutionName is string && data.institutionName.size() >= 1 && data.institutionName.size() <= 200
+        && (!('institutionsList' in data) || (data.institutionsList is list && data.institutionsList.size() <= 20))
+        && (!('institutionDane' in data) || (data.institutionDane is string && data.institutionDane.size() <= 50))
+        && (!('institutionNit' in data) || (data.institutionNit is string && data.institutionNit.size() <= 50))
+        && (!('institutionCity' in data) || (data.institutionCity is string && data.institutionCity.size() <= 100))
+        && (!('institutionLogoUrl' in data) || (data.institutionLogoUrl is string && data.institutionLogoUrl.size() <= 100000))
+        && data.gradingScaleMin is number
+        && data.gradingScaleMax is number
+        && data.passingScore is number
+        && (!('basicMin' in data) || data.basicMin is number)
+        && (!('highMin' in data) || data.highMin is number)
+        && (!('superiorMin' in data) || data.superiorMin is number)
+        && (!('customScaleName' in data) || (data.customScaleName is string && data.customScaleName.size() <= 100))
+        && (!('activeYearId' in data) || (data.activeYearId is string && data.activeYearId.size() <= 128))
+        && (!('activePeriodId' in data) || (data.activePeriodId is string && data.activePeriodId.size() <= 128));
+    }
+
+    match /teachers/{teacherId} {
+      allow get: if isTeacherOwner(teacherId) && isValidId(teacherId);
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isTeacherOwner(teacherId) && isValidId(teacherId) && isValidTeacherProfile(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isTeacherOwner(teacherId) && isValidId(teacherId) && isValidTeacherProfile(incoming()) && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'email', 'documentId', 'phone', 'specialty', 'institutionName', 'institutionsList', 'institutionDane', 'institutionNit', 'institutionCity', 'institutionLogoUrl', 'gradingScaleMin', 'gradingScaleMax', 'passingScore', 'basicMin', 'highMin', 'superiorMin', 'customScaleName', 'activeYearId', 'activePeriodId', 'updatedAt']);
+      allow delete: if isTeacherOwner(teacherId) && isValidId(teacherId);
+    }
+
+    // 2. AcademicYear validation
+    function isValidAcademicYear(data) {
+      return data.keys().hasAll(['teacherId', 'name', 'startDate', 'endDate', 'isActive', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'name', 'startDate', 'endDate', 'isActive', 'status', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.startDate is string && data.startDate.size() <= 30
+        && data.endDate is string && data.endDate.size() <= 30
+        && data.isActive is bool
+        && data.status is string && data.status in ['active', 'closed', 'draft'];
+    }
+
+    match /academic_years/{yearId} {
+      allow get: if isSignedIn() && isValidId(yearId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(yearId) && isValidAcademicYear(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(yearId) && isValidAcademicYear(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'startDate', 'endDate', 'isActive', 'status', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(yearId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 3. AcademicPeriod validation
+    function isValidAcademicPeriod(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'name', 'number', 'weightPercentage', 'startDate', 'endDate', 'isActive', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'name', 'number', 'weightPercentage', 'startDate', 'endDate', 'isActive', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.number is number && data.number >= 1 && data.number <= 10
+        && data.weightPercentage is number && data.weightPercentage >= 0 && data.weightPercentage <= 100
+        && data.startDate is string && data.startDate.size() <= 30
+        && data.endDate is string && data.endDate.size() <= 30
+        && data.isActive is bool;
+    }
+
+    match /academic_periods/{periodId} {
+      allow get: if isSignedIn() && isValidId(periodId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(periodId) && isValidAcademicPeriod(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(periodId) && isValidAcademicPeriod(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['academicYearId', 'name', 'number', 'weightPercentage', 'startDate', 'endDate', 'isActive', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(periodId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 4. AreaSubject validation
+    function isValidAreaSubject(data) {
+      return data.keys().hasAll(['teacherId', 'name', 'areaName', 'weeklyHours', 'educationLevel', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'name', 'areaName', 'code', 'weeklyHours', 'educationLevel', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && data.name is string && data.name.size() >= 1 && data.areaName is string && data.name.size() <= 150
+        && data.areaName.size() >= 1 && data.areaName.size() <= 150
+        && (!('code' in data) || (data.code is string && data.code.size() <= 30))
+        && data.weeklyHours is number && data.weeklyHours >= 0 && data.weeklyHours <= 40
+        && data.educationLevel is string && data.educationLevel in ['Preescolar', 'Primaria', 'Secundaria', 'Media', 'CLEI / Adultos', 'Todos'];
+    }
+
+    match /areas_subjects/{subjectId} {
+      allow get: if isSignedIn() && isValidId(subjectId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(subjectId) && isValidAreaSubject(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(subjectId) && isValidAreaSubject(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'areaName', 'code', 'weeklyHours', 'educationLevel', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(subjectId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 5. GradeGroup validation
+    function isValidGradeGroup(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'gradeName', 'groupName', 'educationLevel', 'shift', 'isDirector', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'institutionName', 'gradeName', 'groupName', 'educationLevel', 'shift', 'isDirector', 'room', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && (!('institutionName' in data) || (data.institutionName is string && data.institutionName.size() <= 150))
+        && data.gradeName is string && data.gradeName.size() >= 1 && data.gradeName.size() <= 80
+        && data.groupName is string && data.groupName.size() >= 1 && data.groupName.size() <= 80
+        && data.educationLevel is string && data.educationLevel in ['Preescolar', 'Primaria', 'Secundaria', 'Media', 'CLEI / Adultos']
+        && data.shift is string && data.shift in ['Mañana', 'Tarde', 'Única', 'Nocturna', 'Sabatina / Dominical']
+        && data.isDirector is bool
+        && (!('room' in data) || (data.room is string && data.room.size() <= 80));
+    }
+
+    match /grade_groups/{groupId} {
+      allow get: if isSignedIn() && isValidId(groupId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(groupId) && isValidGradeGroup(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(groupId) && isValidGradeGroup(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['academicYearId', 'institutionName', 'gradeName', 'groupName', 'educationLevel', 'shift', 'isDirector', 'room', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(groupId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 6. CourseAssignment validation
+    function isValidCourseAssignment(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'gradeGroupId', 'areaSubjectId', 'displayName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'gradeGroupId', 'areaSubjectId', 'displayName', 'scheduleSummary', 'archived', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.gradeGroupId)
+        && isValidId(data.areaSubjectId)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 200
+        && (!('scheduleSummary' in data) || (data.scheduleSummary is string && data.scheduleSummary.size() <= 200))
+        && (!('archived' in data) || data.archived is bool);
+    }
+
+    match /courses/{courseId} {
+      allow get: if isSignedIn() && isValidId(courseId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(courseId) && isValidCourseAssignment(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(courseId) && isValidCourseAssignment(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['academicYearId', 'gradeGroupId', 'areaSubjectId', 'displayName', 'scheduleSummary', 'archived', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(courseId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 7. Student validation
+    function isValidStudent(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'gradeGroupId', 'firstName', 'lastName', 'documentType', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'gradeGroupId', 'firstName', 'lastName', 'documentType', 'documentNumber', 'code', 'birthDate', 'gender', 'guardianName', 'guardianRelationship', 'guardianPhone', 'guardianEmail', 'eps', 'bloodType', 'piarOrAlert', 'status', 'customValues', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.gradeGroupId)
+        && data.firstName is string && data.firstName.size() >= 1 && data.firstName.size() <= 120
+        && data.lastName is string && data.lastName.size() >= 1 && data.lastName.size() <= 120
+        && data.documentType is string && data.documentType in ['RC', 'TI', 'CC', 'CE', 'PPT', 'NES', 'Otro']
+        && (!('documentNumber' in data) || (data.documentNumber is string && data.documentNumber.size() <= 50))
+        && (!('code' in data) || (data.code is string && data.code.size() <= 50))
+        && (!('birthDate' in data) || (data.birthDate is string && data.birthDate.size() <= 30))
+        && (!('gender' in data) || (data.gender is string && data.gender.size() <= 30))
+        && (!('guardianName' in data) || (data.guardianName is string && data.guardianName.size() <= 150))
+        && (!('guardianRelationship' in data) || (data.guardianRelationship is string && data.guardianRelationship.size() <= 80))
+        && (!('guardianPhone' in data) || (data.guardianPhone is string && data.guardianPhone.size() <= 50))
+        && (!('guardianEmail' in data) || (data.guardianEmail is string && data.guardianEmail.size() <= 150))
+        && (!('eps' in data) || (data.eps is string && data.eps.size() <= 100))
+        && (!('bloodType' in data) || (data.bloodType is string && data.bloodType.size() <= 20))
+        && (!('piarOrAlert' in data) || (data.piarOrAlert is string && data.piarOrAlert.size() <= 500))
+        && data.status is string && data.status in ['Activo', 'Retirado', 'Trasladado', 'Desertor']
+        && (!('customValues' in data) || (data.customValues is map && data.customValues.keys().size() <= 30));
+    }
+
+    match /students/{studentId} {
+      allow get: if isSignedIn() && isValidId(studentId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(studentId) && isValidStudent(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(studentId) && isValidStudent(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['academicYearId', 'gradeGroupId', 'firstName', 'lastName', 'documentType', 'documentNumber', 'code', 'birthDate', 'gender', 'guardianName', 'guardianRelationship', 'guardianPhone', 'guardianEmail', 'eps', 'bloodType', 'piarOrAlert', 'status', 'customValues', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(studentId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 8. StudentCustomField validation
+    function isValidStudentCustomField(data) {
+      return data.keys().hasAll(['teacherId', 'fieldKey', 'label', 'fieldType', 'required', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'fieldKey', 'label', 'fieldType', 'options', 'required', 'order', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && data.fieldKey is string && data.fieldKey.size() >= 1 && data.fieldKey.size() <= 80
+        && data.label is string && data.label.size() >= 1 && data.label.size() <= 120
+        && data.fieldType is string && data.fieldType in ['text', 'number', 'date', 'boolean', 'select']
+        && (!('options' in data) || (data.options is list && data.options.size() <= 30 && (data.options.size() == 0 || data.options[0] is string)))
+        && data.required is bool
+        && (!('order' in data) || data.order is number);
+    }
+
+    match /student_custom_fields/{fieldId} {
+      allow get: if isSignedIn() && isValidId(fieldId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(fieldId) && isValidStudentCustomField(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(fieldId) && isValidStudentCustomField(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['fieldKey', 'label', 'fieldType', 'options', 'required', 'order', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(fieldId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 9. AttendanceRecord validation
+    function isValidAttendanceRecord(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'periodId', 'courseId', 'gradeGroupId', 'studentId', 'date', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'periodId', 'courseId', 'gradeGroupId', 'studentId', 'date', 'status', 'note', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.periodId)
+        && isValidId(data.courseId)
+        && isValidId(data.gradeGroupId)
+        && isValidId(data.studentId)
+        && data.date is string && data.date.size() >= 8 && data.date.size() <= 20
+        && data.status is string && data.status in ['Presente', 'Ausente', 'Tardanza', 'Excusa', 'Evasión']
+        && (!('note' in data) || (data.note is string && data.note.size() <= 400));
+    }
+
+    match /attendance/{attendanceId} {
+      allow get: if isSignedIn() && isValidId(attendanceId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(attendanceId) && isValidAttendanceRecord(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(attendanceId) && isValidAttendanceRecord(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'note', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(attendanceId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 10. EvaluationCategory validation
+    function isValidEvaluationCategory(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'periodId', 'courseId', 'name', 'weightPercentage', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'periodId', 'courseId', 'name', 'weightPercentage', 'description', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.periodId)
+        && isValidId(data.courseId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.weightPercentage is number && data.weightPercentage >= 0 && data.weightPercentage <= 100
+        && (!('description' in data) || (data.description is string && data.description.size() <= 300));
+    }
+
+    match /evaluation_categories/{categoryId} {
+      allow get: if isSignedIn() && isValidId(categoryId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(categoryId) && isValidEvaluationCategory(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(categoryId) && isValidEvaluationCategory(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'weightPercentage', 'description', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(categoryId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 11. EvaluationActivity validation
+    function isValidEvaluationActivity(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'periodId', 'courseId', 'categoryId', 'title', 'weightInCategory', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'periodId', 'courseId', 'categoryId', 'title', 'description', 'dueDate', 'weightInCategory', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.periodId)
+        && isValidId(data.courseId)
+        && isValidId(data.categoryId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 150
+        && (!('description' in data) || (data.description is string && data.description.size() <= 500))
+        && (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 30))
+        && data.weightInCategory is number && data.weightInCategory >= 0 && data.weightInCategory <= 100;
+    }
+
+    match /evaluation_activities/{activityId} {
+      allow get: if isSignedIn() && isValidId(activityId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(activityId) && isValidEvaluationActivity(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(activityId) && isValidEvaluationActivity(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['categoryId', 'title', 'description', 'dueDate', 'weightInCategory', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(activityId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 12. GradeEntry validation
+    function isValidGradeEntry(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'periodId', 'courseId', 'categoryId', 'activityId', 'studentId', 'score', 'nationalScaleLevel', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'periodId', 'courseId', 'categoryId', 'activityId', 'studentId', 'score', 'nationalScaleLevel', 'feedback', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.periodId)
+        && isValidId(data.courseId)
+        && isValidId(data.categoryId)
+        && isValidId(data.activityId)
+        && isValidId(data.studentId)
+        && data.score is number && data.score >= 0 && data.score <= 100
+        && data.nationalScaleLevel is string && data.nationalScaleLevel in ['Bajo', 'Básico', 'Alto', 'Superior']
+        && (!('feedback' in data) || (data.feedback is string && data.feedback.size() <= 400));
+    }
+
+    match /grade_entries/{entryId} {
+      allow get: if isSignedIn() && isValidId(entryId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(entryId) && isValidGradeEntry(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(entryId) && isValidGradeEntry(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['score', 'nationalScaleLevel', 'feedback', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(entryId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 13. ObservationRecord validation
+    function isValidObservationRecord(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'periodId', 'gradeGroupId', 'studentId', 'date', 'type', 'description', 'guardianNotified', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'periodId', 'gradeGroupId', 'courseId', 'studentId', 'date', 'type', 'description', 'studentDischarge', 'commitments', 'guardianNotified', 'status', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.periodId)
+        && isValidId(data.gradeGroupId)
+        && (!('courseId' in data) || (data.courseId is string && data.courseId.size() <= 128))
+        && isValidId(data.studentId)
+        && data.date is string && data.date.size() >= 8 && data.date.size() <= 30
+        && data.type is string && data.type in ['Reconocimiento Positivo', 'Llamado de Atención', 'Situación Tipo I', 'Situación Tipo II', 'Situación Tipo III', 'Seguimiento Académico', 'Citación a Acudiente']
+        && data.description is string && data.description.size() >= 1 && data.description.size() <= 1500
+        && (!('studentDischarge' in data) || (data.studentDischarge is string && data.studentDischarge.size() <= 1000))
+        && (!('commitments' in data) || (data.commitments is string && data.commitments.size() <= 1000))
+        && data.guardianNotified is bool
+        && data.status is string && data.status in ['Abierto', 'En seguimiento', 'Cerrado', 'Abierta', 'En Seguimiento', 'Cerrada'];
+    }
+
+    match /observations/{observationId} {
+      allow get: if isSignedIn() && isValidId(observationId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(observationId) && isValidObservationRecord(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(observationId) && isValidObservationRecord(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['academicYearId', 'periodId', 'gradeGroupId', 'courseId', 'studentId', 'date', 'type', 'description', 'studentDischarge', 'commitments', 'guardianNotified', 'status', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(observationId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 14. EventCollection validation
+    function isValidEventCollection(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'gradeGroupId', 'title', 'eventType', 'targetAmountCOP', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'gradeGroupId', 'courseId', 'title', 'description', 'eventType', 'targetAmountCOP', 'dueDate', 'status', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.gradeGroupId)
+        && (!('courseId' in data) || (data.courseId is string && data.courseId.size() <= 128))
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 150
+        && (!('description' in data) || (data.description is string && data.description.size() <= 600))
+        && data.eventType is string && data.eventType in ['Recaudo de Dinero', 'Permiso / Autorización', 'Entrega de Materiales', 'Evento / Salida', 'Otro']
+        && data.targetAmountCOP is number && data.targetAmountCOP >= 0
+        && (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 30))
+        && data.status is string && data.status in ['Activo', 'Cerrado'];
+    }
+
+    match /event_collections/{collectionId} {
+      allow get: if isSignedIn() && isValidId(collectionId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(collectionId) && isValidEventCollection(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(collectionId) && isValidEventCollection(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['courseId', 'title', 'description', 'eventType', 'targetAmountCOP', 'dueDate', 'status', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(collectionId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 15. EventPaymentItem validation
+    function isValidEventPaymentItem(data) {
+      return data.keys().hasAll(['teacherId', 'eventCollectionId', 'gradeGroupId', 'studentId', 'amountPaidCOP', 'paymentStatus', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'eventCollectionId', 'gradeGroupId', 'courseId', 'studentId', 'amountPaidCOP', 'paymentStatus', 'paymentDate', 'note', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.eventCollectionId)
+        && isValidId(data.gradeGroupId)
+        && (!('courseId' in data) || (data.courseId is string && data.courseId.size() <= 128))
+        && isValidId(data.studentId)
+        && data.amountPaidCOP is number && data.amountPaidCOP >= 0
+        && data.paymentStatus is string && data.paymentStatus in ['Pendiente', 'Abono', 'Pagado / Cumplido', 'Exento']
+        && (!('paymentDate' in data) || (data.paymentDate is string && data.paymentDate.size() <= 30))
+        && (!('note' in data) || (data.note is string && data.note.size() <= 300));
+    }
+
+    match /event_payment_items/{itemId} {
+      allow get: if isSignedIn() && isValidId(itemId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(itemId) && isValidEventPaymentItem(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(itemId) && isValidEventPaymentItem(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['courseId', 'amountPaidCOP', 'paymentStatus', 'paymentDate', 'note', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(itemId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 16. SupportPlan validation
+    function isValidSupportPlan(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'periodId', 'courseId', 'studentId', 'weaknesses', 'assignedActivities', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'periodId', 'courseId', 'studentId', 'weaknesses', 'assignedActivities', 'dueDate', 'recoveryScore', 'status', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.periodId)
+        && isValidId(data.courseId)
+        && isValidId(data.studentId)
+        && data.weaknesses is string && data.weaknesses.size() >= 1 && data.weaknesses.size() <= 1000
+        && data.assignedActivities is string && data.assignedActivities.size() >= 1 && data.assignedActivities.size() <= 1000
+        && (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 30))
+        && (!('recoveryScore' in data) || (data.recoveryScore is number && data.recoveryScore >= 0 && data.recoveryScore <= 100))
+        && data.status is string && data.status in ['Asignado', 'En revisión', 'Superado', 'No superado'];
+    }
+
+    match /support_plans/{planId} {
+      allow get: if isSignedIn() && isValidId(planId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(planId) && isValidSupportPlan(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(planId) && isValidSupportPlan(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['weaknesses', 'assignedActivities', 'dueDate', 'recoveryScore', 'status', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(planId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 17. CalendarEvent validation
+    function isValidCalendarEvent(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'title', 'date', 'category', 'completed', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'title', 'description', 'date', 'time', 'category', 'courseId', 'completed', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 150
+        && (!('description' in data) || (data.description is string && data.description.size() <= 600))
+        && data.date is string && data.date.size() >= 8 && data.date.size() <= 30
+        && (!('time' in data) || (data.time is string && data.time.size() <= 20))
+        && data.category is string && data.category in ['Evaluación', 'Reunión de Padres', 'Consejo Académico', 'Actividad Institucional', 'Entrega de Planillas', 'Otro']
+        && (!('courseId' in data) || (data.courseId is string && data.courseId.size() <= 128))
+        && data.completed is bool;
+    }
+
+    match /calendar_events/{eventId} {
+      allow get: if isSignedIn() && isValidId(eventId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(eventId) && isValidCalendarEvent(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(eventId) && isValidCalendarEvent(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'date', 'time', 'category', 'courseId', 'completed', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(eventId) && existing().teacherId == request.auth.uid;
+    }
+
+    // 18. GuardianMessage validation
+    function isValidGuardianMessage(data) {
+      return data.keys().hasAll(['teacherId', 'academicYearId', 'gradeGroupId', 'subject', 'body', 'channel', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['teacherId', 'academicYearId', 'gradeGroupId', 'studentId', 'subject', 'body', 'channel', 'sentDate', 'createdAt', 'updatedAt'])
+        && data.teacherId == request.auth.uid
+        && isValidId(data.academicYearId)
+        && isValidId(data.gradeGroupId)
+        && (!('studentId' in data) || (data.studentId is string && data.studentId.size() <= 128))
+        && data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 150
+        && data.body is string && data.body.size() >= 1 && data.body.size() <= 1500
+        && data.channel is string && data.channel in ['WhatsApp', 'Correo Electrónico', 'Nota Impresa', 'Citación Presencial']
+        && (!('sentDate' in data) || (data.sentDate is string && data.sentDate.size() <= 30));
+    }
+
+    match /guardian_messages/{messageId} {
+      allow get: if isSignedIn() && isValidId(messageId) && existing().teacherId == request.auth.uid;
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(messageId) && isValidGuardianMessage(incoming()) && hasValidTimestampsOnCreate(incoming());
+      allow update: if isSignedIn() && isValidId(messageId) && isValidGuardianMessage(incoming()) && existing().teacherId == request.auth.uid && hasValidTimestampsOnUpdate(incoming(), existing())
+        && incoming().teacherId == existing().teacherId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['subject', 'body', 'channel', 'sentDate', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(messageId) && existing().teacherId == request.auth.uid;
+    }
+  }
+}
